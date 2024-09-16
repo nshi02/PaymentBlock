@@ -1,0 +1,325 @@
+openapi: 3.0.0
+info:
+  title: Payment Block API
+  description: >-
+    API для управления блокировками платежей для клиентов, включая возможность
+    блокировки, разблокировки, проверки статуса, обновления данных и различения
+    причин блокировок.
+  version: 1.3.0
+paths:
+  /blockPayment:
+    post:
+      summary: Блокировать платежи для клиента
+      description: >-
+        Блокировка платежей для конкретного клиента.
+        Можно указать причину блокировки и тип блокировки.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                client_id:
+                  type: string
+                  example: '12345'
+                  description: Уникальный идентификатор клиента
+                block_reason:
+                  type: string
+                  example: Мошенничество
+                  description: Причина блокировки
+                block_type:
+                  type: string
+                  example: Fraud
+                  description: >-
+                    Тип блокировки (например, мошенничество, некорректные
+                    реквизиты и т.д.)
+      responses:
+        '200':
+          description: Платежи успешно заблокированы
+        '400':
+          description: Неверные данные запроса
+        '404':
+          description: Клиент не найден
+        '409':
+          description: Платежи уже заблокированы
+  /unblockPayment:
+    post:
+      summary: Разблокировать платежи для клиента
+      description: >-
+        Разблокировка платежей для конкретного клиента.
+        Если клиент был заблокирован по нескольким причинам, можно указать,
+        какие именно блокировки нужно убрать.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                client_id:
+                  type: string
+                  example: '12345'
+                unblock_reason:
+                  type: string
+                  example: Проблема решена
+                  description: Причина разблокировки
+                block_type:
+                  type: string
+                  example: Fraud
+                  description: Тип блокировки, который необходимо убрать (если применимо)
+      responses:
+        '200':
+          description: Платежи успешно разблокированы
+        '400':
+          description: Неверные данные запроса
+        '404':
+          description: Клиент не найден
+        '409':
+          description: Клиент не был заблокирован или уже разблокирован
+  /checkBlockStatus:
+    get:
+      summary: Проверить статус блокировки для клиента
+      description: >-
+        Проверка статуса блокировки платежей для клиента
+        и получение информации о причинах блокировки.
+      parameters:
+        - name: client_id
+          in: query
+          required: true
+          schema:
+            type: string
+            example: '12345'
+      responses:
+        '200':
+          description: Статус блокировки возвращен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  client_id:
+                    type: string
+                    example: '12345'
+                  is_blocked:
+                    type: boolean
+                    example: true
+                    description: Флаг, указывающий, заблокированы ли платежи
+                  block_reasons:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        block_reason:
+                          type: string
+                          example: Мошенничество
+                        block_type:
+                          type: string
+                          example: Fraud
+                  unblock_requests:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        unblock_reason:
+                          type: string
+                        requested_at:
+                          type: string
+                          format: date-time
+                          example: '2024-09-01T12:00:00Z'
+        '400':
+          description: Неверные данные запроса
+        '404':
+          description: Клиент не найден
+  /checkPerson:
+    get:
+      summary: Проверить личность заблокированного клиента
+      description: >-
+        Проверка, заблокирован ли клиент как мошенник или добропорядочный
+        клиент. Можно фильтровать по статусу.
+      parameters:
+        - name: status
+          in: query
+          description: Нужно выбрать значение статуса для фильтра
+          required: false
+          schema:
+            type: string
+            default: все
+            enum:
+              - все
+              - мошенник
+              - добропорядочный клиент
+      responses:
+        '200':
+          description: Статус блокировки возвращен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  client_id:
+                    type: string
+                    example: '12345'
+                  is_blocked:
+                    type: boolean
+                    example: true
+                    description: Флаг, указывающий, заблокированы ли платежи
+                  block_reason:
+                    type: string
+                    example: Мошенничество
+                    description: Причина блокировки, если она есть
+                  client_type:
+                    type: string
+                    example: Мошенник
+                    description: Тип клиента
+        '400':
+          description: Неверные данные запроса
+  /blockReasons:
+    get:
+      summary: Получить список возможных причин блокировки
+      description: >-
+        Получение списка всех возможных причин блокировки
+        платежей.
+      responses:
+        '200':
+          description: Список причин блокировки успешно возвращен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    reason_code:
+                      type: string
+                      example: FRAUD
+                      description: Код причины
+                    reason_description:
+                      type: string
+                      example: Мошенничество
+                      description: Описание причины
+        '500':
+          description: Ошибка сервера
+  /blockTypes:
+    get:
+      summary: Получить список возможных типов блокировок
+      description: Возвращение списка всех возможных типов блокировок.
+      responses:
+        '200':
+          description: Список типов блокировок успешно возвращен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  example:
+                    - Fraud
+                    - IncorrectDetails
+                    - Other
+                  description: Список возможных типов блокировок
+        '500':
+          description: Ошибка сервера
+  /updateClient:
+    put:
+      summary: Обновить данные клиента
+      description: >-
+        Обновление информации о блокировках или
+        разблокировках для клиента, включая изменение причины блокировки, типа
+        блокировки и статуса.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                client_id:
+                  type: string
+                  example: '12345'
+                block_reason:
+                  type: string
+                  example: Мошенничество
+                  description: Новая причина блокировки
+                block_type:
+                  type: string
+                  example: Fraud
+                  description: Новый тип блокировки (если применимо)
+                unblock_reason:
+                  type: string
+                  example: Проблема решена
+                  description: Причина для разблокировки (если применимо)
+                action:
+                  type: string
+                  example: update
+                  description: Действие для выполнения - обновление или удаление блокировки
+      responses:
+        '200':
+          description: Данные клиента успешно обновлены
+        '400':
+          description: Неверные данные запроса
+        '404':
+          description: Клиент не найден
+        '409':
+          description: Конфликт данных (например, блокировка не существует)
+components:
+  schemas:
+    BlockRequest:
+      type: object
+      properties:
+        client_id:
+          type: string
+          example: '12345'
+        block_reason:
+          type: string
+          example: Мошенничество
+        block_type:
+          type: string
+          example: Fraud
+    UnblockRequest:
+      type: object
+      properties:
+        client_id:
+          type: string
+        unblock_reason:
+          type: string
+          example: Проблема решена
+        block_type:
+          type: string
+          example: Fraud
+    BlockStatusResponse:
+      type: object
+      properties:
+        client_id:
+          type: string
+        is_blocked:
+          type: boolean
+        block_reasons:
+          type: array
+          items:
+            type: object
+            properties:
+              block_reason:
+                type: string
+              block_type:
+                type: string
+        unblock_requests:
+          type: array
+          items:
+            type: object
+            properties:
+              unblock_reason:
+                type: string
+              requested_at:
+                type: string
+                format: date-time
+                example: '2024-09-01T12:00:00Z'
+    BlockReason:
+      type: object
+      properties:
+        reason_code:
+          type: string
+        reason_description:
+          type: string
+    BlockType:
+      type: string
